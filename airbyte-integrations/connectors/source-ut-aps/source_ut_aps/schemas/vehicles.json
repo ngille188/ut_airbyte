@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "required": [
+        "VehicleNumber",
+        "VehicleStatus",
+        "VehicleYear",
+        "VehicleManufacturer",
+        "VehicleModel",
+        "VehicleDescription",
+        "DeptId",
+        "OperatorID",
+        "OperatorName",
+        "VehicleOwnerId"
+    ],
+    "properties": {
+      "VehicleNumber": {
+        "type": "string"
+      },
+      "VehicleStatus": {
+        "type": "string"
+      },
+      "VehicleYear": {
+        "type": "string"
+      },
+      "VehicleManufacturer": {
+        "type": "string"
+      },
+      "VehicleModel": {
+        "type": "string"
+      },
+      "VehicleDescription": {
+        "type": "string"
+      },
+      "DeptId": {
+        "type": "string"
+      },
+      "OperatorID": {
+        "type": "string"
+      },
+      "OperatorName": {
+        "type": "string"
+      },
+      "VehicleOwnerId": {
+        "type": "string"
+      }
+    }
+  }

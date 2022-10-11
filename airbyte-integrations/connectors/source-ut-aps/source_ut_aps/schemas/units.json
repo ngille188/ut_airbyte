@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "BusinessUnit": {
+            "type": ["string", "Null"]
+        },
+        "CompanyCode": {
+            "type": ["string", "Null"]
+        },
+        "Unit": {
+            "type": ["string", "Null"]
+        },
+        "UnitDescription": {
+            "type": ["string", "Null"]
+        },
+        "Parent": {
+            "type": ["string", "Null"]
+        },
+        "ParentDescription": {
+            "type": ["string", "Null"]
+        },
+        "ReplacedByCo": {
+            "type": ["string", "Null"]
+        },
+        "ReplacedByUnit": {
+            "type": ["string", "Null"]
+        },
+        "ActiveInactive": {
+            "type": ["string", "Null"]
+        },
+        "ActiveDate": {
+            "type": ["string", "Null"]
+        },
+        "BaseRollUp": {
+            "type": ["string", "Null"]
+        },
+        "RespEmployeeId": {
+            "type": ["string", "Null"]
+        },
+        "RollUpLevel": {
+            "type": ["string", "Null"]
+        },
+        "RollUpA": {
+            "type": ["string", "Null"]
+        },
+        "RollUpB": {
+            "type": ["string", "Null"]
+        },
+        "RollUpC": {
+            "type": ["string", "Null"]
+        },
+        "RollUpD": {
+            "type": ["string", "Null"]
+        },
+        "RollUpE": {
+            "type": ["string", "Null"]
+        },
+        "RollUpF": {
+            "type": ["string", "Null"]
+        },
+        "RollUpG": {
+            "type": ["string", "Null"]
+        },
+        "RollUpH": {
+            "type": ["string", "Null"]
+        },
+        "RollUpI": {
+            "type": ["string", "Null"]
+        },
+        "RollUpJ": {
+            "type": ["string", "Null"]
+        },
+        "RollUpK": {
+            "type": ["string", "Null"]
+        },
+        "RollUpL": {
+            "type": ["string", "Null"]
+        },
+        "RollUpM": {
+            "type": ["string", "Null"]
+        },
+        "RollUp": {
+            "type": ["string", "Null"]
+        }
+    }
+}

@@ -4,10 +4,14 @@ connectionSpecification:
   title: Ut Aps Spec
   type: object
   required:
-    - api_key
+    - username
+    - password
   additionalProperties: true
   properties:
-    # 'TODO: This schema defines the configuration required for the source. This usually involves metadata such as database and/or authentication information.':
-    api_key:
+    username:
       type: string
-      description: API Key
+      description: API username
+    password:
+      type: string
+      description: API password
+      airbyte_secret: true
