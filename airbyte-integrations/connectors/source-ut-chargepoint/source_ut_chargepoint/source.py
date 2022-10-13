@@ -58,15 +58,22 @@ class FullRefreshChargePointStream(Stream):
         )
         try:
             client_function = getattr(client.service, self.endpoint)
-            response = client_function({})
 
-            if response.response_code == '100':
-                for resp in getattr(response, self.field_pointer):
-                    yield resp
+            more = True
+            while more:
+                response = client_function({})
 
-            else:
-                self.logger.error(response.response_text)
-                yield []
+                if response.response_code == '100':
+                    for resp in getattr(response, self.field_pointer):
+                        yield resp
+
+                    more = response.more_flag
+
+                else:
+                    self.logger.error(response.response_text)
+                    more = False
+                    yield []
+
         except Exception as e:
             yield AirbyteMessage(
                 type=Type.LOG,
@@ -91,16 +98,31 @@ class IncrementalChargePointStream(Stream, IncrementalMixin):
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
 
-       pass
+        client = zeep.Client(
+            self.config['wsdl'],
+            wsse=UsernameToken(self.config['username'], self.config['password'])
+        )
+        if cursor_field not in stream_state:
+            stream_state[cursor_field] = 1
 
+        session_search_query = {'startRecord': stream_state[cursor_field]}
 
-    @property
-    def cursor_field(self) -> str:
-        """
-        Defining a cursor field indicates that a stream is incremental, so any incremental stream must extend this class
-        and define a cursor field.
-        """
-        pass
+        try:
+            client_function = getattr(client.service, self.endpoint)
+
+            more = True
+            while more:
+                response = client_function(session_search_query)
+
+                if response.response_code == '100':
+                    for resp in getattr(response, self.field_pointer):
+                        yield resp
+                        self.state = resp
+
+                    more = response.more_flag
+
+        except Exception as e:
+            pass
 
     @property
     def field_pointer(self) -> str:
@@ -113,11 +135,11 @@ class IncrementalChargePointStream(Stream, IncrementalMixin):
 
     @property
     def state(self):
-        return self._state
+        return {self.cursor_field: str(self._cursor_value)}
 
     @state.setter
     def state(self, value):
-        self._state[self.cursor_field] = value[self.cursor_field]
+        self._cursor_value = value[self.cursor_field]
 
 
 class GetChargingSessionData(IncrementalChargePointStream):
@@ -144,10 +166,6 @@ class GetStations(FullRefreshChargePointStream):
     '''
     field_pointer = 'stationData'
     primary_key = ['stationID', 'stationSerialNum', 'sgID']
-
-
-
-
 
 class SourceChargePoint(AbstractSource):
     def check_connection(self, logger: AirbyteLogger, config: Mapping[str, Any]) -> Tuple[bool, Any]:
