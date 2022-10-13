@@ -8,6 +8,8 @@ from datetime import datetime
 from logging import _Level
 from typing import Dict, Generator, Mapping, Tuple, Any, List, Iterable
 
+
+from abc import ABC, abstractmethod
 import zeep
 from zeep import helpers
 from zeep.wsse.username import UsernameToken
@@ -29,20 +31,29 @@ from airbyte_cdk.models import (
 from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream, IncrementalMixin
 
-class FullRefreshChargePointStream(Stream):
+
+class BaseChargepointStream(Stream, ABC):
 
     def __init__(self, config: Mapping[str, Any]):
-        self.config = config
-
+        self.client = zeep.Client(
+            config['wsdl'],
+            wsse=UsernameToken(config['username'], config['password'])
+        )
 
     @property
+    @abstractmethod
     def field_pointer(self) -> str:
         """The response field containing the records"""
-        pass
+        ...
 
     @property
+    @abstractmethod
     def endpoint(self) -> str:
-        pass
+        """The Api endpoing"""
+        ...
+
+
+class FullRefreshChargepointStream(BaseChargepointStream):
 
     def read_records(
         self,
@@ -52,17 +63,11 @@ class FullRefreshChargePointStream(Stream):
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
 
-        client = zeep.Client(
-            self.config['wsdl'],
-            wsse=UsernameToken(self.config['username'], self.config['password'])
-        )
         try:
-            client_function = getattr(client.service, self.endpoint)
-
+            client_function = getattr(self.client.service, self.endpoint)
             more = True
             while more:
                 response = client_function({})
-
                 if response.response_code == '100':
                     for resp in getattr(response, self.field_pointer):
                         yield resp
@@ -84,11 +89,11 @@ class FullRefreshChargePointStream(Stream):
             )
 
 
-class IncrementalChargePointStream(Stream, IncrementalMixin):
 
-    def __init__(self, config: Mapping[str, Any]):
-        self.config = config
+class IncrementalChargepointStream(BaseChargepointStream, IncrementalMixin):
 
+    def __init__(self):
+        self._cursor_value = None
 
     def read_records(
         self,
@@ -98,17 +103,13 @@ class IncrementalChargePointStream(Stream, IncrementalMixin):
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
 
-        client = zeep.Client(
-            self.config['wsdl'],
-            wsse=UsernameToken(self.config['username'], self.config['password'])
-        )
         if cursor_field not in stream_state:
             stream_state[cursor_field] = 1
 
         session_search_query = {'startRecord': stream_state[cursor_field]}
 
         try:
-            client_function = getattr(client.service, self.endpoint)
+            client_function = getattr(self.client.service, self.endpoint)
 
             more = True
             while more:
@@ -124,57 +125,49 @@ class IncrementalChargePointStream(Stream, IncrementalMixin):
         except Exception as e:
             pass
 
-    @property
-    def field_pointer(self) -> str:
-        """The response field containing the records"""
-        pass
 
     @property
-    def endpoint(self) -> str:
-        pass
+    @abstractmethod
+    def start_record(self) -> int:
+        ...
 
     @property
     def state(self):
-        return {self.cursor_field: str(self._cursor_value)}
+        return {self.cursor_field: str(self._cursor_value)} if self._cursor_value else {}
 
     @state.setter
     def state(self, value):
-        self._cursor_value = value[self.cursor_field]
+        self._cursor_value = value.get(self.cursor_field, self.start_record)
 
 
-class GetChargingSessionData(IncrementalChargePointStream):
-    '''
-    Properties to be implemented:
-        cursor_field
-        field_pointer
-        primary key: return None if there isn't a primary key
-        state_interval_checkpoint
-    '''
+class GetChargingSessionData(IncrementalChargepointStream):
+
     cursor_field = 'recordNumber'
     field_pointer = 'ChargingSessionData'
     primary_key = ['sessionID']
     state_checkpoint_interval = 100
+    start_record = 1
+    endpoint = 'getChargingSessionData'
 
 
-class GetStations(FullRefreshChargePointStream):
-    '''
-    Properties to be implemented:
-        cursor_field
-        field_pointer
-        primary key: return None if there isn't a primary key
+class GetStations(FullRefreshChargepointStream):
 
-    '''
     field_pointer = 'stationData'
     primary_key = ['stationID', 'stationSerialNum', 'sgID']
+    endpoint = 'getStations'
 
-class SourceChargePoint(AbstractSource):
+
+class SourceUtChargepoint(AbstractSource):
     def check_connection(self, logger: AirbyteLogger, config: Mapping[str, Any]) -> Tuple[bool, Any]:
         try:
-            zeep.Client(
-                config['url'],
+            client = zeep.Client(
+                config['wsdl'],
                 wsse=UsernameToken(config['username'], config['password'])
             )
-            return True, None
+            sample = client.service.getStations({})
+            if sample.response_code == '100':
+                return True, None
+            return False, sample.response_text
         except Exception as e:
             return False, repr(e)
 

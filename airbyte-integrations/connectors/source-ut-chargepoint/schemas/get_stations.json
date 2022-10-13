@@ -1,0 +1,94 @@
+{
+    "properties": {
+        "stationID": {
+            "type": "string"
+        },
+        "stationManufacturer": {
+            "type": "string"
+        },
+        "stationModel": {
+            "type": "string"
+        },
+        "stationMacAddr": {
+            "type": "string"
+        },
+        "stationSerialNum": {
+            "type": "string"
+        },
+        "stationActivationDate": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "Address": {
+            "type": "string"
+        },
+        "City": {
+            "type": "string"
+        },
+        "State": {
+            "type": "string"
+        },
+        "Country": {
+            "type": "string"
+        },
+        "postalCode": {
+            "type": "string"
+        },
+        "Port": {
+            "type": "array",
+            "properties": {
+                "portNumber": {
+                    "type": "string"
+                },
+                "stationName": {
+                    "type": "string"
+                },
+                "Geo": {
+                    "type": "object",
+                    "properties": {
+                        "Lat": {
+                            "type": "string"
+                        },
+                        "Long": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Description": {
+                    "type": ["null", "string"]
+                },
+                "Reservable": {
+                    "type": "integer"
+                },
+                "Status": {
+                    "type": ["null", "string"]
+                },
+                "Level": {
+                    "type": "string"
+                },
+                "timeStamp": {
+                    "type": ["null", "string"],
+                    "format": "date-time"
+                },
+                "Mode": {
+                    "type": ["null", "string"]
+                },
+                "Connector": {
+                    "type": "string"
+                },
+                "Voltage": {
+                    "type": "string"
+                },
+                "Current": {
+                    "type": "string"
+                },
+                "Power": {
+                    "type": "string"
+                },
+                "estimatedCost": {
+                    "type": "number"
+                }
+            }
+        }
+    }
+}
