@@ -1,0 +1,20 @@
+documentationUrl: https://docsurl.com
+connectionSpecification:
+  $schema: http://json-schema.org/draft-07/schema#
+  title: Ut Dmctc Spec
+  type: object
+  required:
+    - api_key
+    - username
+    - password
+  additionalProperties: true
+  properties:
+    api_key:
+      type: string
+      description: API Key
+    username:
+      type: string
+      description: API username
+    password:
+      type: string
+      description: API password

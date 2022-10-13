@@ -5,7 +5,8 @@
 
 import json
 from datetime import datetime
-from typing import Dict, Generator
+from logging import _Level
+from typing import Dict, Generator, Mapping, Tuple, Any, List, Iterable
 
 import zeep
 from zeep import helpers
@@ -16,114 +17,148 @@ from airbyte_cdk.models import (
     AirbyteCatalog,
     AirbyteConnectionStatus,
     AirbyteMessage,
+    AirbyteLogMessage,
     AirbyteRecordMessage,
     AirbyteStream,
     ConfiguredAirbyteCatalog,
     Status,
+    Level,
+    SyncMode,
     Type,
 )
-from airbyte_cdk.sources import Source
+from airbyte_cdk.sources import AbstractSource
+from airbyte_cdk.sources.streams import Stream, IncrementalMixin
+
+class FullRefreshChargePointStream(Stream):
+
+    def __init__(self, config: Mapping[str, Any]):
+        self.config = config
 
 
-class SourceUtChargepoint(Source):
-    def check(self, logger: AirbyteLogger, config: json) -> AirbyteConnectionStatus:
-        """
-        Tests if the input configuration can be used to successfully connect to the integration
-            e.g: if a provided Stripe API token can be used to connect to the Stripe API.
+    @property
+    def field_pointer(self) -> str:
+        """The response field containing the records"""
+        pass
 
-        :param logger: Logging object to display debug/info/error to the logs
-            (logs will not be accessible via airbyte UI if they are not passed to this logger)
-        :param config: Json object containing the configuration of this source, content of this json is as specified in
-        the properties of the spec.yaml file
+    @property
+    def endpoint(self) -> str:
+        pass
 
-        :return: AirbyteConnectionStatus indicating a Success or Failure
-        """
+    def read_records(
+        self,
+        sync_mode: SyncMode,
+        cursor_field: List[str] = None,
+        stream_slice: Mapping[str, Any] = None,
+        stream_state: Mapping[str, Any] = None,
+    ) -> Iterable[Mapping[str, Any]]:
+
+        client = zeep.Client(
+            self.config['wsdl'],
+            wsse=UsernameToken(self.config['username'], self.config['password'])
+        )
         try:
-            client = zeep.Client(config['wsdl'], wsse=UsernameToken(config['username'], config['password']))
-            client.service.getStations(searchQuery={})
-            return AirbyteConnectionStatus(status=Status.SUCCEEDED)
+            client_function = getattr(client.service, self.endpoint)
+            response = client_function({})
+
+            if response.response_code == '100':
+                for resp in getattr(response, self.field_pointer):
+                    yield resp
+
+            else:
+                self.logger.error(response.response_text)
+                yield []
         except Exception as e:
-            return AirbyteConnectionStatus(status=Status.FAILED, message=f"An exception occurred: {str(e)}")
+            yield AirbyteMessage(
+                type=Type.LOG,
+                log=AirbyteLogMessage(
+                    level=Level.FATAL,
+                    message=f"Exception occured while reading data from {self.name}. {str(e)}"
+                )
+            )
 
-    def discover(self, logger: AirbyteLogger, config: json) -> AirbyteCatalog:
+
+class IncrementalChargePointStream(Stream, IncrementalMixin):
+
+    def __init__(self, config: Mapping[str, Any]):
+        self.config = config
+
+
+    def read_records(
+        self,
+        sync_mode: SyncMode,
+        cursor_field: List[str] = None,
+        stream_slice: Mapping[str, Any] = None,
+        stream_state: Mapping[str, Any] = None,
+    ) -> Iterable[Mapping[str, Any]]:
+
+       pass
+
+
+    @property
+    def cursor_field(self) -> str:
         """
-        Returns an AirbyteCatalog representing the available streams and fields in this integration.
-        For example, given valid credentials to a Postgres database,
-        returns an Airbyte catalog where each postgres table is a stream, and each table column is a field.
-
-        :param logger: Logging object to display debug/info/error to the logs
-            (logs will not be accessible via airbyte UI if they are not passed to this logger)
-        :param config: Json object containing the configuration of this source, content of this json is as specified in
-        the properties of the spec.yaml file
-
-        :return: AirbyteCatalog is an object describing a list of all available streams in this source.
-            A stream is an AirbyteStream object that includes:
-            - its stream name (or table name in the case of Postgres)
-            - json_schema providing the specifications of expected schema for this stream (a list of columns described
-            by their names and types)
+        Defining a cursor field indicates that a stream is incremental, so any incremental stream must extend this class
+        and define a cursor field.
         """
-        json_schema = {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "additionalProperties": True,
-            "type": "object",
-        }
+        pass
 
-        stations = AirbyteStream(name="getStations", json_schema=json_schema)
-        sessions = AirbyteStream(
-            name='getChargingSessionData',
-            json_schema=json_schema,
-            supported_sync_modes=["incremental"],
-            default_cursor_field=["recordNumber"],
-        )
-        streams = [stations, sessions]
-        return AirbyteCatalog(streams=streams)
+    @property
+    def field_pointer(self) -> str:
+        """The response field containing the records"""
+        pass
 
-    def read(
-        self, logger: AirbyteLogger, config: json, catalog: ConfiguredAirbyteCatalog, state: Dict[str, any]
-    ) -> Generator[AirbyteMessage, None, None]:
-        """
-        Returns a generator of the AirbyteMessages generated by reading the source with the given configuration,
-        catalog, and state.
+    @property
+    def endpoint(self) -> str:
+        pass
 
-        :param logger: Logging object to display debug/info/error to the logs
-            (logs will not be accessible via airbyte UI if they are not passed to this logger)
-        :param config: Json object containing the configuration of this source, content of this json is as specified in
-            the properties of the spec.yaml file
-        :param catalog: The input catalog is a ConfiguredAirbyteCatalog which is almost the same as AirbyteCatalog
-            returned by discover(), but
-        in addition, it's been configured in the UI! For each particular stream and field, there may have been provided
-        with extra modifications such as: filtering streams and/or columns out, renaming some entities, etc
-        :param state: When a Airbyte reads data from a source, it might need to keep a checkpoint cursor to resume
-            replication in the future from that saved checkpoint.
-            This is the object that is provided with state from previous runs and avoid replicating the entire set of
-            data everytime.
+    @property
+    def state(self):
+        return self._state
 
-        :return: A generator that produces a stream of AirbyteRecordMessage contained in AirbyteMessage object.
-        """
-
-        client = zeep.Client(config['wsdl'], wsse=UsernameToken(config['username'], config['password']))
-        for catalog_stream in catalog.streams:
-            stream_name = catalog_stream.stream.name
-            if stream_name not in state:
-                state[stream_name] = {}
-            client_function = getattr(client.service, stream_name)
-            data = client_function(state[stream_name])
-            decoded_data = helpers.serialize_object(data, dict)
+    @state.setter
+    def state(self, value):
+        self._state[self.cursor_field] = value[self.cursor_field]
 
 
-        yield AirbyteMessage(
-            type=Type.RECORD,
-            record=AirbyteRecordMessage(stream=stream_name, data=data, emitted_at=int(datetime.now().timestamp()) * 1000),
-        )
+class GetChargingSessionData(IncrementalChargePointStream):
+    '''
+    Properties to be implemented:
+        cursor_field
+        field_pointer
+        primary key: return None if there isn't a primary key
+        state_interval_checkpoint
+    '''
+    cursor_field = 'recordNumber'
+    field_pointer = 'ChargingSessionData'
+    primary_key = ['sessionID']
+    state_checkpoint_interval = 100
 
 
-    @staticmethod
-    def update_state(api, state, stream_name):
-        state[stream_name] = {
-            "last_result_size": api.get_result_size(),
-            "version": api.get_version(),
-            "has_next": api.get_has_next()
-        }
-        if state["session_id"] is None:
-            state["session_id"] = api.get_credentials().session_id
-        return state
+class GetStations(FullRefreshChargePointStream):
+    '''
+    Properties to be implemented:
+        cursor_field
+        field_pointer
+        primary key: return None if there isn't a primary key
+
+    '''
+    field_pointer = 'stationData'
+    primary_key = ['stationID', 'stationSerialNum', 'sgID']
+
+
+
+
+
+class SourceChargePoint(AbstractSource):
+    def check_connection(self, logger: AirbyteLogger, config: Mapping[str, Any]) -> Tuple[bool, Any]:
+        try:
+            zeep.Client(
+                config['url'],
+                wsse=UsernameToken(config['username'], config['password'])
+            )
+            return True, None
+        except Exception as e:
+            return False, repr(e)
+
+    def streams(self, config: Mapping[str, Any]) -> List[Stream]:
+        return[GetChargingSessionData(config=config), GetStations(config=config)]
