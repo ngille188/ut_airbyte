@@ -5,5 +5,5 @@ plugins {
 }
 
 airbytePython {
-    moduleDirectory 'source_ut_chargepoint_singer'
+    moduleDirectory 'source_ut_chargepoint'
 }

@@ -2,7 +2,7 @@
   "streams": [
     {
       "stream": {
-        "name": "getstations",
+        "name": "get_stations",
         "json_schema": {},
         "supported_sync_modes": ["full_refresh"]
       },
@@ -11,7 +11,7 @@
     },
     {
       "stream": {
-        "name": "getchargingsessiondata",
+        "name": "get_charging_session_data",
         "json_schema": {},
         "supported_sync_modes": ["incremental"],
         "source_defined_cursor": true,

@@ -21,6 +21,7 @@ development environment of choice. To activate it from the terminal, run:
 ```
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install '.[tests]'
 ```
 If you are in an IDE, follow your IDE's instructions to activate the virtualenv.
 
@@ -30,7 +31,9 @@ If this is mumbo jumbo to you, don't worry about it, just put your deps in `setu
 should work as you expect.
 
 #### Building via Gradle
-From the Airbyte repository root, run:
+You can also build the connector in Gradle. This is typically used in CI and not needed for your development workflow.
+
+To build using Gradle, from the Airbyte repository root, run:
 ```
 ./gradlew :airbyte-integrations:connectors:source-ut-chargepoint:build
 ```
@@ -38,7 +41,7 @@ From the Airbyte repository root, run:
 #### Create credentials
 **If you are a community contributor**, follow the instructions in the [documentation](https://docs.airbyte.io/integrations/sources/ut-chargepoint)
 to generate the necessary credentials. Then create a file `secrets/config.json` conforming to the `source_ut_chargepoint/spec.yaml` file.
-Note that the `secrets` directory is gitignored by default, so there is no danger of accidentally checking in sensitive information.
+Note that any directory named `secrets` is gitignored across the entire Airbyte repo, so there is no danger of accidentally checking in sensitive information.
 See `integration_tests/sample_config.json` for a sample config file.
 
 **If you are an Airbyte core member**, copy the credentials in Lastpass under the secret name `source ut-chargepoint test creds`
@@ -76,7 +79,7 @@ docker run --rm -v $(pwd)/secrets:/secrets airbyte/source-ut-chargepoint:dev dis
 docker run --rm -v $(pwd)/secrets:/secrets -v $(pwd)/integration_tests:/integration_tests airbyte/source-ut-chargepoint:dev read --config /secrets/config.json --catalog /integration_tests/configured_catalog.json
 ```
 ## Testing
-   Make sure to familiarize yourself with [pytest test discovery](https://docs.pytest.org/en/latest/goodpractices.html#test-discovery) to know how your test files and methods should be named.
+Make sure to familiarize yourself with [pytest test discovery](https://docs.pytest.org/en/latest/goodpractices.html#test-discovery) to know how your test files and methods should be named.
 First install test dependencies into your virtual environment:
 ```
 pip install .[tests]

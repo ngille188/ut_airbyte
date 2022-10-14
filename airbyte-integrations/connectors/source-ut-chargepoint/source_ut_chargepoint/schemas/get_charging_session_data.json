@@ -1,49 +1,51 @@
 {
-    "properties": {
-        "stationID": {
-            "type": "string"
-        },
-        "stationName": {
-            "type": "string"
-        },
-        "portNumber": {
-            "type": "string"
-        },
-        "Address": {
-            "type": "string"
-        },
-        "City": {
-            "type": "string"
-        },
-        "State": {
-            "type": "string"
-        },
-        "Country": {
-            "type": "string"
-        },
-        "postalCode": {
-            "type": "string"
-        },
-        "sessionID": {
-            "type": "integer"
-        },
-        "Energy": {
-            "type": "number"
-        },
-        "startTime": {
-            "type": "string"
-        },
-        "endTime": {
-            "type": "string"
-        },
-        "userID": {
-            "type": ["null", "number", "string"]
-        },
-        "recordNumber": {
-            "type": "integer"
-        },
-        "credentialID": {
-            "type": "string"
-        }
-    }
+  "json_schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+      "stationID": {
+          "type": "string"
+      },
+      "stationName": {
+          "type": "string"
+      },
+      "portNumber": {
+          "type": "string"
+      },
+      "Address": {
+          "type": "string"
+      },
+      "City": {
+          "type": "string"
+      },
+      "State": {
+          "type": "string"
+      },
+      "Country": {
+          "type": "string"
+      },
+      "postalCode": {
+          "type": "string"
+      },
+      "sessionID": {
+          "type": "integer"
+      },
+      "Energy": {
+          "type": "number"
+      },
+      "startTime": {
+          "type": "string"
+      },
+      "endTime": {
+          "type": "string"
+      },
+      "userID": {
+          "type": ["null", "number", "string"]
+      },
+      "recordNumber": {
+          "type": "integer"
+      },
+      "credentialID": {
+          "type": "string"
+      }
+  }
 }

@@ -2,7 +2,7 @@
 # Copyright (c) 2022 Airbyte, Inc., all rights reserved.
 #
 
-from distutils.command.config import config
+
 from typing import  Mapping, Tuple, Any, List, Iterable
 
 from abc import ABC, abstractmethod
@@ -61,10 +61,11 @@ class FullRefreshChargepointStream(BaseChargepointStream):
             while more:
                 response = client_function({})
                 if response.responseCode == '100':
-                    for resp in getattr(response, self.field_pointer):
+                    for _resp in getattr(response, self.field_pointer):
+                        resp = zeep.helpers.serialize_object(_resp, dict)
                         yield resp
 
-                    more = response.moreFlag
+                    more = response.MoreFlag
 
                 else:
                     self.logger.error(response.responseText)
@@ -94,10 +95,10 @@ class IncrementalChargepointStream(BaseChargepointStream, IncrementalMixin):
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
 
-        if cursor_field not in stream_state:
-            stream_state[cursor_field] = 1
+        if cursor_field[0] not in stream_state:
+            stream_state[cursor_field[0]] = 1
 
-        session_search_query = {'startRecord': stream_state[cursor_field]}
+        session_search_query = {'startRecord': stream_state[cursor_field[0]]}
 
         try:
             client_function = getattr(self.client.service, self.endpoint)
@@ -107,11 +108,13 @@ class IncrementalChargepointStream(BaseChargepointStream, IncrementalMixin):
                 response = client_function(session_search_query)
 
                 if response.responseCode == '100':
-                    for resp in getattr(response, self.field_pointer):
+                    for _resp in getattr(response, self.field_pointer):
+                        resp = zeep.helpers.serialize_object(_resp, dict)
                         yield resp
                         self.state = resp
 
-                    more = response.moreFlag
+                    session_search_query.update({'startRecord': self.state[cursor_field[0]]})
+                    more = response.MoreFlag
 
                 else:
                     self.logger.error(response.responseText)
@@ -159,8 +162,19 @@ class GetStations(FullRefreshChargepointStream):
     endpoint = 'getStations'
 
 
+# Source
 class SourceUtChargepoint(AbstractSource):
-    def check_connection(self, logger: AirbyteLogger, config: Mapping[str, Any]) -> Tuple[bool, Any]:
+    def check_connection(self, logger, config) -> Tuple[bool, any]:
+        """
+        TODO: Implement a connection check to validate that the user-provided config can be used to connect to the underlying API
+
+        See https://github.com/airbytehq/airbyte/blob/master/airbyte-integrations/connectors/source-stripe/source_stripe/source.py#L232
+        for an example.
+
+        :param config:  the user-input config object conforming to the connector's spec.yaml
+        :param logger:  logger object
+        :return Tuple[bool, any]: (True, None) if the input config can be used to connect to the API successfully, (False, error) otherwise.
+        """
         try:
             client = zeep.Client(
                 config['wsdl'],
@@ -174,4 +188,9 @@ class SourceUtChargepoint(AbstractSource):
             return False, repr(e)
 
     def streams(self, config: Mapping[str, Any]) -> List[Stream]:
+        """
+        TODO: Replace the streams below with your own streams.
+
+        :param config: A Mapping of the user input configuration as defined in the connector spec.
+        """
         return[GetChargingSessionData(config=config), GetStations(config=config)]
