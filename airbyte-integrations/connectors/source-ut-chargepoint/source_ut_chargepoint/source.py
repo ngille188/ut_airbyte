@@ -2,28 +2,17 @@
 # Copyright (c) 2022 Airbyte, Inc., all rights reserved.
 #
 
-
-import json
-from datetime import datetime
-from logging import _Level
-from typing import Dict, Generator, Mapping, Tuple, Any, List, Iterable
-
+from distutils.command.config import config
+from typing import  Mapping, Tuple, Any, List, Iterable
 
 from abc import ABC, abstractmethod
 import zeep
-from zeep import helpers
 from zeep.wsse.username import UsernameToken
 
 from airbyte_cdk.logger import AirbyteLogger
 from airbyte_cdk.models import (
-    AirbyteCatalog,
-    AirbyteConnectionStatus,
     AirbyteMessage,
     AirbyteLogMessage,
-    AirbyteRecordMessage,
-    AirbyteStream,
-    ConfiguredAirbyteCatalog,
-    Status,
     Level,
     SyncMode,
     Type,
@@ -34,7 +23,7 @@ from airbyte_cdk.sources.streams import Stream, IncrementalMixin
 
 class BaseChargepointStream(Stream, ABC):
 
-    def __init__(self, config: Mapping[str, Any]):
+    def __init__(self, config):
         self.client = zeep.Client(
             config['wsdl'],
             wsse=UsernameToken(config['username'], config['password'])
@@ -55,6 +44,9 @@ class BaseChargepointStream(Stream, ABC):
 
 class FullRefreshChargepointStream(BaseChargepointStream):
 
+    def __init__(self, config):
+        super().__init__(config)
+
     def read_records(
         self,
         sync_mode: SyncMode,
@@ -68,14 +60,14 @@ class FullRefreshChargepointStream(BaseChargepointStream):
             more = True
             while more:
                 response = client_function({})
-                if response.response_code == '100':
+                if response.responseCode == '100':
                     for resp in getattr(response, self.field_pointer):
                         yield resp
 
-                    more = response.more_flag
+                    more = response.moreFlag
 
                 else:
-                    self.logger.error(response.response_text)
+                    self.logger.error(response.responseText)
                     more = False
                     yield []
 
@@ -89,11 +81,10 @@ class FullRefreshChargepointStream(BaseChargepointStream):
             )
 
 
-
 class IncrementalChargepointStream(BaseChargepointStream, IncrementalMixin):
 
-    def __init__(self):
-        self._cursor_value = None
+    def __init__(self, config):
+        super().__init__(config)
 
     def read_records(
         self,
@@ -115,15 +106,26 @@ class IncrementalChargepointStream(BaseChargepointStream, IncrementalMixin):
             while more:
                 response = client_function(session_search_query)
 
-                if response.response_code == '100':
+                if response.responseCode == '100':
                     for resp in getattr(response, self.field_pointer):
                         yield resp
                         self.state = resp
 
-                    more = response.more_flag
+                    more = response.moreFlag
+
+                else:
+                    self.logger.error(response.responseText)
+                    more = False
+                    yield []
 
         except Exception as e:
-            pass
+            yield AirbyteMessage(
+                type=Type.LOG,
+                log=AirbyteLogMessage(
+                    level=Level.FATAL,
+                    message=f"Exception occured while reading data from {self.name}. {str(e)}"
+                )
+            )
 
 
     @property
@@ -165,7 +167,7 @@ class SourceUtChargepoint(AbstractSource):
                 wsse=UsernameToken(config['username'], config['password'])
             )
             sample = client.service.getStations({})
-            if sample.response_code == '100':
+            if sample.responseCode == '100':
                 return True, None
             return False, sample.response_text
         except Exception as e:
